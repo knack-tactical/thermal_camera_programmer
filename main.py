@@ -1,14 +1,28 @@
-import sys
+import sys, os
 from datetime import datetime
 
-from PyQt5 import QtCore, QtWidgets, QtSerialPort
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QToolBar, QHBoxLayout, QAction, QStatusBar, QLineEdit, \
-    QPushButton, QTextEdit, QVBoxLayout, QActionGroup, QComboBox, QLabel, QFrame
+from PyQt5 import QtCore, QtWidgets, QtSerialPort, QtGui
+from PyQt5.QtWidgets import (
+    QMainWindow,
+    QWidget,
+    QHBoxLayout,
+    QAction,
+    QStatusBar,
+    QLineEdit,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+    QActionGroup,
+    QComboBox,
+    QLabel,
+    QFrame,
+)
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtSerialPort import QSerialPortInfo
 
 import HM_TM5X
 
+basedir = os.path.dirname(__file__)
 
 class MenuSettings(QMainWindow):
     portName = pyqtSignal(str)
@@ -31,7 +45,9 @@ class MenuSettings(QMainWindow):
             button_action.setCheckable(True)
             if port == "COM1":
                 button_action.setChecked(True)
-            button_action.triggered.connect(lambda checked, txt=txt: self.chooseCOMPortClick(txt))
+            button_action.triggered.connect(
+                lambda checked, txt=txt: self.chooseCOMPortClick(txt)
+            )
             portGroup.addAction(button_action)
             portMenu.addAction(button_action)
 
@@ -63,7 +79,7 @@ class LoginPopup(QtWidgets.QWidget):
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setAttribute(QtCore.Qt.WA_StyledBackground)
         self.setAutoFillBackground(True)
-        self.setStyleSheet('''
+        self.setStyleSheet("""
             LoginPopup {
                 background: rgba(64, 64, 64, 64);
             }
@@ -81,33 +97,40 @@ class LoginPopup(QtWidgets.QWidget):
                 background: none;
                 border: 1px solid gray;
             }
-        ''')
+        """)
 
         fullLayout = QtWidgets.QVBoxLayout(self)
 
         self.container = QtWidgets.QWidget(
-            autoFillBackground=True, objectName='container')
+            autoFillBackground=True, objectName="container"
+        )
         fullLayout.addWidget(self.container, alignment=QtCore.Qt.AlignCenter)
         self.container.setSizePolicy(
-            QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Maximum)
+            QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Maximum
+        )
 
         buttonSize = self.fontMetrics().height()
         self.closeButton = QtWidgets.QPushButton(
-            '×', self.container, objectName='close')
+            "×", self.container, objectName="close"
+        )
         self.closeButton.setFixedSize(buttonSize, buttonSize)
         self.closeButton.clicked.connect(self.reject)
 
         layout = QtWidgets.QVBoxLayout(self.container)
         layout.setContentsMargins(
-            buttonSize * 2, buttonSize, buttonSize * 2, buttonSize)
+            buttonSize * 2, buttonSize, buttonSize * 2, buttonSize
+        )
 
         title = QtWidgets.QLabel(
             "Are you certain you'd like to factory reset your device?\nAll saved settings will be lost.",
-            objectName='title', alignment=QtCore.Qt.AlignCenter)
+            objectName="title",
+            alignment=QtCore.Qt.AlignCenter,
+        )
         layout.addWidget(title)
 
         buttonBox = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.Yes | QtWidgets.QDialogButtonBox.Cancel)
+            QtWidgets.QDialogButtonBox.Yes | QtWidgets.QDialogButtonBox.Cancel
+        )
         layout.addWidget(buttonBox, alignment=Qt.AlignCenter)
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
@@ -170,33 +193,65 @@ class MainWindow(QMainWindow):
         self.message_le.returnPressed.connect(self.send_btn.click)
 
         self.output_te = QTextEdit(readOnly=True)
-        self.button = QPushButton(text="Connect", checkable=True, toggled=self.on_toggled)
+        self.button = QPushButton(
+            text="Connect", checkable=True, toggled=self.on_toggled
+        )
         self.clearButton = QPushButton(text="Clear", clicked=self.clearOutput)
         self.testButton = QPushButton(text="Get Model Name", clicked=self.readModel)
 
         self.palettes = QComboBox()
         self.palettes.addItems(
-            ["White Hot", "Black Hot", "Fusion 1", "Rainbow", "Fusion 2", "Iron Red 1", "Iron Red 2", "Dark Brown",
-             "Color 1", "Color 2", "Ice Fire", "Rain", "Green Hot", "Red Hot", "Deep Blue"])
+            [
+                "White Hot",
+                "Black Hot",
+                "Fusion 1",
+                "Rainbow",
+                "Fusion 2",
+                "Iron Red 1",
+                "Iron Red 2",
+                "Dark Brown",
+                "Color 1",
+                "Color 2",
+                "Ice Fire",
+                "Rain",
+                "Green Hot",
+                "Red Hot",
+                "Deep Blue",
+            ]
+        )
         self.palettes.setCurrentIndex(0)
-        self.writePaletteButton = QPushButton(text="Write Palette", clicked=self.writePalette)
-        self.readPaletteButton = QPushButton(text="Read Current Palette", clicked=self.readPalette)
+        self.writePaletteButton = QPushButton(
+            text="Write Palette", clicked=self.writePalette
+        )
+        self.readPaletteButton = QPushButton(
+            text="Read Current Palette", clicked=self.readPalette
+        )
 
         self.brightnessLE = QLineEdit()
-        self.brightnessButton = QPushButton(text="Set Brightness (0-100)", clicked=self.writeBrightness)
+        self.brightnessButton = QPushButton(
+            text="Set Brightness (0-100)", clicked=self.writeBrightness
+        )
         self.brightnessLE.returnPressed.connect(self.brightnessButton.click)
         self.contrastLE = QLineEdit()
-        self.contrastButton = QPushButton(text="Set Contrast (0-100)", clicked=self.writeContrast)
+        self.contrastButton = QPushButton(
+            text="Set Contrast (0-100)", clicked=self.writeContrast
+        )
         self.contrastLE.returnPressed.connect(self.contrastButton.click)
 
         self.mirrorModes = QComboBox()
         self.mirrorModes.addItems(["None", "Central", "Left/Right", "Up/Down"])
         self.mirrorModes.setCurrentIndex(0)
-        self.writeMirrorModeButton = QPushButton(text="Set Mirror Mode", clicked=self.writeMirrorMode)
+        self.writeMirrorModeButton = QPushButton(
+            text="Set Mirror Mode", clicked=self.writeMirrorMode
+        )
 
-        self.saveSettingsButton = QPushButton(text="Save Current Device Settings to Device", clicked=self.saveSettings)
+        self.saveSettingsButton = QPushButton(
+            text="Save Current Device Settings to Device", clicked=self.saveSettings
+        )
 
-        self.factoryResetButton = QPushButton(text="Factory Reset Device", clicked=self.showDialog)
+        self.factoryResetButton = QPushButton(
+            text="Factory Reset Device", clicked=self.showDialog
+        )
 
         lay = QVBoxLayout(self)
         hlay = QHBoxLayout()
@@ -244,15 +299,18 @@ class MainWindow(QMainWindow):
         widget.setLayout(lay)
         self.setCentralWidget(widget)
 
-        self.serial = QtSerialPort.QSerialPort(portname, baudRate=QtSerialPort.QSerialPort.Baud115200,
-                                               readyRead=self.receive)
+        self.serial = QtSerialPort.QSerialPort(
+            portname,
+            baudRate=QtSerialPort.QSerialPort.Baud115200,
+            readyRead=self.receive,
+        )
 
     def receive(self):
         while self.serial.canReadLine():
             text = self.serial.readLine()
             text = text.data().decode()
-            text = text.rstrip('\r\n')
-            if len(text) >= 20 and text[:2] == '0x':
+            text = text.rstrip("\r\n")
+            if len(text) >= 20 and text[:2] == "0x":
                 data = HM_TM5X.handleReply(text, self.lastFunctionSent)
                 if data[:2] == "-1":
                     self.updateText(data[3:], False)
@@ -275,7 +333,7 @@ class MainWindow(QMainWindow):
         if text[:2] != -1:
             self.serial.write(text.encode())
         self.updateText(text)
-        self.statusBar().showMessage(f'Reading Model Name', 1000)
+        self.statusBar().showMessage("Reading Model Name", 1000)
 
     def writePalette(self):
         val = self.palettes.currentIndex()
@@ -284,7 +342,9 @@ class MainWindow(QMainWindow):
         if text[:2] != -1:
             self.serial.write(text.encode())
         self.updateText(text)
-        self.statusBar().showMessage(f'Writing {self.palettes.itemText(val)} to Palette', 1000)
+        self.statusBar().showMessage(
+            f"Writing {self.palettes.itemText(val)} to Palette", 1000
+        )
 
     def readPalette(self):
         self.lastFunctionSent = 14
@@ -292,13 +352,15 @@ class MainWindow(QMainWindow):
         if text[:2] != -1:
             self.serial.write(text.encode())
         self.updateText(text)
-        self.statusBar().showMessage(f'Reading Palette', 1000)
+        self.statusBar().showMessage("Reading Palette", 1000)
 
     def writeBrightness(self):
         self.lastFunctionSent = 9
         val = self.brightnessLE.text()
         if not val.isnumeric():
-            self.statusBar().showMessage(f'Brightness must by a number between 0 and 100', 1000)
+            self.statusBar().showMessage(
+                "Brightness must by a number between 0 and 100", 1000
+            )
             self.brightnessLE.clear()
             return
         text = HM_TM5X.brightness(int(val), True)
@@ -306,13 +368,15 @@ class MainWindow(QMainWindow):
         if text[:2] != -1:
             self.serial.write(text.encode())
         self.updateText(text)
-        self.statusBar().showMessage(f'Setting brightness to {val}', 1000)
+        self.statusBar().showMessage(f"Setting brightness to {val}", 1000)
 
     def writeContrast(self):
         self.lastFunctionSent = 10
         val = self.contrastLE.text()
         if not val.isnumeric():
-            self.statusBar().showMessage(f'Contrast must by a number between 0 and 100', 1000)
+            self.statusBar().showMessage(
+                "Contrast must by a number between 0 and 100", 1000
+            )
             self.contrastLE.clear()
             return
         text = HM_TM5X.contrast(int(val), True)
@@ -320,7 +384,7 @@ class MainWindow(QMainWindow):
         if text[:2] != -1:
             self.serial.write(text.encode())
         self.updateText(text)
-        self.statusBar().showMessage(f'Setting contrast to {val}', 1000)
+        self.statusBar().showMessage(f"Setting contrast to {val}", 1000)
 
     def writeMirrorMode(self):
         val = self.mirrorModes.currentIndex()
@@ -329,7 +393,9 @@ class MainWindow(QMainWindow):
         if text[:2] != -1:
             self.serial.write(text.encode())
         self.updateText(text)
-        self.statusBar().showMessage(f'Writing mirror mode as {self.mirrorModes.itemText(val)}', 1000)
+        self.statusBar().showMessage(
+            f"Writing mirror mode as {self.mirrorModes.itemText(val)}", 1000
+        )
 
     def saveSettings(self):
         self.lastFunctionSent = 3
@@ -337,12 +403,14 @@ class MainWindow(QMainWindow):
         if text[:2] != -1:
             self.serial.write(text.encode())
         self.updateText(text)
-        self.statusBar().showMessage(f'Saving current device settings to device... please wait', 10000)
+        self.statusBar().showMessage(
+            "Saving current device settings to device... please wait", 10000
+        )
 
     @QtCore.pyqtSlot()
     def clearOutput(self):
         self.output_te.clear()
-        self.statusBar().showMessage(f"Output cleared", 1000)
+        self.statusBar().showMessage("Output cleared", 1000)
 
     @QtCore.pyqtSlot(bool)
     def on_toggled(self, checked):
@@ -353,13 +421,15 @@ class MainWindow(QMainWindow):
                 if not self.serial.isOpen():
                     self.button.setChecked(False)
                 else:
-                    self.statusBar().showMessage(f"Connected to {self.portFinder.port}", 1000)
+                    self.statusBar().showMessage(
+                        f"Connected to {self.portFinder.port}", 1000
+                    )
             else:
-                self.statusBar().showMessage(f"COM Port not selected or available", 1000)
+                self.statusBar().showMessage("COM Port not selected or available", 1000)
                 self.button.setChecked(False)
         else:
             self.serial.close()
-            self.statusBar().showMessage(f"Serial connection closed", 1000)
+            self.statusBar().showMessage("Serial connection closed", 1000)
 
     def showDialog(self):
         dialog = LoginPopup(self)
@@ -369,7 +439,9 @@ class MainWindow(QMainWindow):
             if text[:2] != -1:
                 self.serial.write(text.encode())
             self.updateText(text)
-            self.statusBar().showMessage(f'Resetting device to Factory settings... please wait', 10000)
+            self.statusBar().showMessage(
+                "Resetting device to Factory settings... please wait", 10000
+            )
 
     def chooseCOMPort(self, newPort):
         serOpen = False
@@ -390,27 +462,32 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         self.serial.close()
-        self.statusBar().showMessage(f"Disconnected", 1000)
+        self.statusBar().showMessage("Disconnected", 1000)
         print("COM Port closed")
 
     def updateText(self, text, sending=True):
         if sending:
             if self.showTimestamp:
                 t = datetime.now()
-                self.output_te.append(f"{t.hour}:{t.minute}:{t.second}.{round(t.microsecond / 1000)} ->>> {text}")
+                self.output_te.append(
+                    f"{t.hour}:{t.minute}:{t.second}.{round(t.microsecond / 1000)} ->>> {text}"
+                )
             else:
                 self.output_te.append(f">> {text}")
         else:
             if self.showTimestamp:
                 t = datetime.now()
-                self.output_te.append(f"{t.hour}:{t.minute}:{t.second}.{round(t.microsecond / 1000)} -> {text}")
+                self.output_te.append(
+                    f"{t.hour}:{t.minute}:{t.second}.{round(t.microsecond / 1000)} -> {text}"
+                )
             else:
                 self.output_te.append(f"{text}")
             self.statusBar().showMessage(f'"{text}" received', 1000)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
+    app.setWindowIcon(QtGui.QIcon(os.path.join(basedir, 'favicon.ico')))
     w = MainWindow()
     w.show()
     sys.exit(app.exec_())
