@@ -52,15 +52,15 @@ class MenuSettings(QMainWindow):
             portMenu.addAction(button_action)
 
         # Settings Menu
-        settingsMenu = menu.addMenu("Settings")
-        sGroup = QActionGroup(parent)
-        sGroup.setExclusive(False)
-        timestampAction = QAction("Show Timestamp")
-        timestampAction.setCheckable(True)
-        timestampAction.setChecked(False)
-        timestampAction.triggered.connect(lambda checked: self.timestampClick(checked))
-        sGroup.addAction(timestampAction)
-        settingsMenu.addAction(timestampAction)
+        # settingsMenu = menu.addMenu("Settings")
+        # sGroup = QActionGroup(parent)
+        # sGroup.setExclusive(False)
+        # timestampAction = QAction("Show Timestamp")
+        # timestampAction.setCheckable(True)
+        # timestampAction.setChecked(False)
+        # timestampAction.triggered.connect(lambda checked: self.timestampClick(checked))
+        # sGroup.addAction(timestampAction)
+        # settingsMenu.addAction(timestampAction)
 
     def chooseCOMPortClick(self, port):
         self.port = port
@@ -177,6 +177,7 @@ class MainWindow(QMainWindow):
 
         self.lastFunctionSent = None
         portname = "None"
+        self.incoming_bytes = b''
 
         self.setStatusBar(QStatusBar(self))
 
@@ -193,8 +194,8 @@ class MainWindow(QMainWindow):
         self.message_le.returnPressed.connect(self.send_btn.click)
 
         self.output_te = QTextEdit(readOnly=True)
-        self.button = QPushButton(
-            text="Connect", checkable=True, toggled=self.on_toggled
+        self.connectPortButton = QPushButton(
+            text="Connect to port", checkable=True, toggled=self.on_toggled
         )
         self.clearButton = QPushButton(text="Clear", clicked=self.clearOutput)
         self.testButton = QPushButton(text="Get Model Name", clicked=self.readModel)
@@ -221,7 +222,7 @@ class MainWindow(QMainWindow):
         )
         self.palettes.setCurrentIndex(0)
         self.writePaletteButton = QPushButton(
-            text="Write Palette", clicked=self.writePalette
+            text="Set Palette", clicked=self.writePalette
         )
         self.readPaletteButton = QPushButton(
             text="Read Current Palette", clicked=self.readPalette
@@ -249,25 +250,23 @@ class MainWindow(QMainWindow):
             text="Save Current Device Settings to Device", clicked=self.saveSettings
         )
 
-        self.factoryResetButton = QPushButton(
-            text="Factory Reset Device", clicked=self.showDialog
-        )
+        self.factoryResetButton = QPushButton(text="Factory Reset Device", clicked=self.showDialog)
 
         lay = QVBoxLayout(self)
         hlay = QHBoxLayout()
+        hlay.addWidget(self.connectPortButton)
         hlay.addWidget(self.message_le)
         hlay.addWidget(self.send_btn)
-        hlay.addWidget(self.button)
         lay.addLayout(hlay)
-        lay.addWidget(self.output_te)
-        lay.addWidget(self.clearButton)
+        # lay.addWidget(self.output_te)
+        # lay.addWidget(self.clearButton)
         lay.addWidget(QFrame(frameShape=QFrame.HLine))
-        lay.addWidget(self.testButton)
+        # lay.addWidget(self.testButton)
         hlay2 = QHBoxLayout()
         hlay2.addWidget(QLabel("Pallete:"))
         hlay2.addWidget(self.palettes)
         hlay2.addWidget(self.writePaletteButton)
-        hlay2.addWidget(self.readPaletteButton)
+        # hlay2.addWidget(self.readPaletteButton)
         lay.addLayout(hlay2)
         lay.addWidget(QFrame(frameShape=QFrame.HLine))
 
@@ -306,10 +305,15 @@ class MainWindow(QMainWindow):
         )
 
     def receive(self):
-        while self.serial.canReadLine():
-            text = self.serial.readLine()
-            text = text.data().decode()
-            text = text.rstrip("\r\n")
+        while self.serial.bytesAvailable():
+            b = self.serial.readAll().data()
+            self.incoming_bytes += b
+            if len(self.incoming_bytes) > 20:
+                self.incoming_bytes = b''
+
+        if b[-1] == 255:
+            text = self.incoming_bytes
+            # text = text.rstrip("\r\n")
             if len(text) >= 20 and text[:2] == "0x":
                 data = HM_TM5X.handleReply(text, self.lastFunctionSent)
                 if data[:2] == "-1":
@@ -323,15 +327,28 @@ class MainWindow(QMainWindow):
         text = self.message_le.text()
         if text == "":
             return
+        if text[:2] == '0x':
+            text = text[2:]
+        try:
+            int(text, 16)
+        except ValueError:
+            self.statusBar().showMessage("You must send a hexadecimal value", 1000)
+            self.message_le.clear()
+            return
+        if len(text) %2 != 0:
+            self.statusBar().showMessage("You must send a hexadecimal value", 1000)
+            self.message_le.clear()
+            return
+        b = bytes.fromhex(text)
+        self.serial.write(b)
         self.message_le.clear()
-        self.serial.write(text.encode())
         self.updateText(text)
 
     def readModel(self):
         self.lastFunctionSent = 1
         text = HM_TM5X.readModel()
         if text[:2] != -1:
-            self.serial.write(text.encode())
+            self.serial.write(bytes.fromhex(text))
         self.updateText(text)
         self.statusBar().showMessage("Reading Model Name", 1000)
 
@@ -340,7 +357,7 @@ class MainWindow(QMainWindow):
         self.lastFunctionSent = 14
         text = HM_TM5X.palette(val, True)
         if text[:2] != -1:
-            self.serial.write(text.encode())
+            self.serial.write(bytes.fromhex(text))
         self.updateText(text)
         self.statusBar().showMessage(
             f"Writing {self.palettes.itemText(val)} to Palette", 1000
@@ -350,7 +367,7 @@ class MainWindow(QMainWindow):
         self.lastFunctionSent = 14
         text = HM_TM5X.palette(0)
         if text[:2] != -1:
-            self.serial.write(text.encode())
+            self.serial.write(bytes.fromhex(text))
         self.updateText(text)
         self.statusBar().showMessage("Reading Palette", 1000)
 
@@ -366,7 +383,7 @@ class MainWindow(QMainWindow):
         text = HM_TM5X.brightness(int(val), True)
         self.brightnessLE.clear()
         if text[:2] != -1:
-            self.serial.write(text.encode())
+            self.serial.write(bytes.fromhex(text))
         self.updateText(text)
         self.statusBar().showMessage(f"Setting brightness to {val}", 1000)
 
@@ -382,7 +399,7 @@ class MainWindow(QMainWindow):
         text = HM_TM5X.contrast(int(val), True)
         self.contrastLE.clear()
         if text[:2] != -1:
-            self.serial.write(text.encode())
+            self.serial.write(bytes.fromhex(text))
         self.updateText(text)
         self.statusBar().showMessage(f"Setting contrast to {val}", 1000)
 
@@ -391,7 +408,7 @@ class MainWindow(QMainWindow):
         self.lastFunctionSent = 15
         text = HM_TM5X.imageMirroring(val, True)
         if text[:2] != -1:
-            self.serial.write(text.encode())
+            self.serial.write(bytes.fromhex(text))
         self.updateText(text)
         self.statusBar().showMessage(
             f"Writing mirror mode as {self.mirrorModes.itemText(val)}", 1000
@@ -401,7 +418,7 @@ class MainWindow(QMainWindow):
         self.lastFunctionSent = 3
         text = HM_TM5X.saveCurrentSettings()
         if text[:2] != -1:
-            self.serial.write(text.encode())
+            self.serial.write(bytes.fromhex(text))
         self.updateText(text)
         self.statusBar().showMessage(
             "Saving current device settings to device... please wait", 10000
@@ -414,19 +431,19 @@ class MainWindow(QMainWindow):
 
     @QtCore.pyqtSlot(bool)
     def on_toggled(self, checked):
-        self.button.setText("Disconnect" if checked else "Connect")
+        self.connectPortButton.setText("Disconnect" if checked else "Connect")
         if checked:
             if not self.serial.isOpen():
                 self.serial.open(QtCore.QIODevice.ReadWrite)
                 if not self.serial.isOpen():
-                    self.button.setChecked(False)
+                    self.connectPortButton.setChecked(False)
                 else:
                     self.statusBar().showMessage(
                         f"Connected to {self.portFinder.port}", 1000
                     )
             else:
                 self.statusBar().showMessage("COM Port not selected or available", 1000)
-                self.button.setChecked(False)
+                self.connectPortButton.setChecked(False)
         else:
             self.serial.close()
             self.statusBar().showMessage("Serial connection closed", 1000)
@@ -437,7 +454,7 @@ class MainWindow(QMainWindow):
             self.lastFunctionSent = 4
             text = HM_TM5X.factoryReset()
             if text[:2] != -1:
-                self.serial.write(text.encode())
+                self.serial.write(bytes.fromhex(text))
             self.updateText(text)
             self.statusBar().showMessage(
                 "Resetting device to Factory settings... please wait", 10000
@@ -452,7 +469,7 @@ class MainWindow(QMainWindow):
         if serOpen:
             self.serial.open(QtCore.QIODevice.ReadWrite)
             if not self.serial.isOpen():
-                self.button.setChecked(False)
+                self.connectPortButton.setChecked(False)
         self.statusBar().showMessage(f"{newPort} selected", 1000)
         print(newPort)
 

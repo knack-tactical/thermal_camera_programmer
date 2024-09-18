@@ -239,7 +239,7 @@ def packetTemplate(class_addr, subclass_addr, rw_flag, data, size, chk):
         chk,
         END,
     ]
-    output = "0x"
+    output = ""
     for val in vals:
         output += f"{val:02X}"
     return output
