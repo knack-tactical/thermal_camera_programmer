@@ -73,7 +73,7 @@ class MenuSettings(QMainWindow):
         self.close()
 
 
-class LoginPopup(QtWidgets.QWidget):
+class ResetPopup(QtWidgets.QWidget):
     def __init__(self, parent):
         super().__init__(parent)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
@@ -189,11 +189,11 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle("HM-TM5X Thermal Camera Programmer")
 
-        self.message_le = QLineEdit()
-        self.send_btn = QPushButton(text="Send", clicked=self.send)
-        self.message_le.returnPressed.connect(self.send_btn.click)
+        self.sendLE = QLineEdit()
+        self.sendButton = QPushButton(text="Send", clicked=self.send)
+        self.sendLE.returnPressed.connect(self.sendButton.click)
 
-        self.output_te = QTextEdit(readOnly=True)
+        self.outputTE = QTextEdit(readOnly=True)
         self.connectPortButton = QPushButton(
             text="Connect to port", checkable=True, toggled=self.on_toggled
         )
@@ -228,11 +228,13 @@ class MainWindow(QMainWindow):
             text="Read Current Palette", clicked=self.readPalette
         )
 
+        self.brightnessLabel = QLabel("Brightness (50): ")
         self.brightnessLE = QLineEdit()
         self.brightnessButton = QPushButton(
             text="Set Brightness (0-100)", clicked=self.writeBrightness
         )
         self.brightnessLE.returnPressed.connect(self.brightnessButton.click)
+        self.contrastLabel = QLabel("Contrast (50): ")
         self.contrastLE = QLineEdit()
         self.contrastButton = QPushButton(
             text="Set Contrast (0-100)", clicked=self.writeContrast
@@ -246,8 +248,20 @@ class MainWindow(QMainWindow):
             text="Set Mirror Mode", clicked=self.writeMirrorMode
         )
 
+        self.asc = QComboBox()
+        self.asc.addItems(["Auto Ctrl Off", "Auto Switching, Timing Ctrl",
+                           "Auto Switching, Temp Diff Ctrl", "Full-auto Ctrl (Default)"])
+        self.asc.setCurrentIndex(3)
+        self.writeASCButton = QPushButton(
+            text="Set Auto Shutter Ctrl", clicked=self.writeASC
+        )
+
         self.saveSettingsButton = QPushButton(
             text="Save Current Device Settings to Device", clicked=self.saveSettings
+        )
+
+        self.manualShutterCalibrationButton = QPushButton(
+            text="Manual Shutter Calibration", clicked=self.writeManualShutterCalibration
         )
 
         self.factoryResetButton = QPushButton(text="Factory Reset Device", clicked=self.showDialog)
@@ -255,8 +269,8 @@ class MainWindow(QMainWindow):
         lay = QVBoxLayout(self)
         hlay = QHBoxLayout()
         hlay.addWidget(self.connectPortButton)
-        hlay.addWidget(self.message_le)
-        hlay.addWidget(self.send_btn)
+        hlay.addWidget(self.sendLE)
+        hlay.addWidget(self.sendButton)
         lay.addLayout(hlay)
         # lay.addWidget(self.output_te)
         # lay.addWidget(self.clearButton)
@@ -271,13 +285,13 @@ class MainWindow(QMainWindow):
         lay.addWidget(QFrame(frameShape=QFrame.HLine))
 
         hlay3 = QHBoxLayout()
-        hlay3.addWidget(QLabel("Brightness: "))
+        hlay3.addWidget(self.brightnessLabel)
         hlay3.addWidget(self.brightnessLE)
         hlay3.addWidget(self.brightnessButton)
         lay.addLayout(hlay3)
 
         hlay4 = QHBoxLayout()
-        hlay4.addWidget(QLabel("Contrast: "))
+        hlay4.addWidget(self.contrastLabel)
         hlay4.addWidget(self.contrastLE)
         hlay4.addWidget(self.contrastButton)
         lay.addLayout(hlay4)
@@ -288,6 +302,14 @@ class MainWindow(QMainWindow):
         hlay5.addWidget(self.mirrorModes)
         hlay5.addWidget(self.writeMirrorModeButton)
         lay.addLayout(hlay5)
+        lay.addWidget(QFrame(frameShape=QFrame.HLine))
+
+        hlay6 = QHBoxLayout()
+        hlay6.addWidget(QLabel("Auto Shutter Control: "))
+        hlay6.addWidget(self.asc)
+        hlay6.addWidget(self.writeASCButton)
+        lay.addWidget(self.manualShutterCalibrationButton)
+        lay.addLayout(hlay6)
         lay.addWidget(QFrame(frameShape=QFrame.HLine))
 
         lay.addWidget(self.saveSettingsButton)
@@ -303,6 +325,7 @@ class MainWindow(QMainWindow):
             baudRate=QtSerialPort.QSerialPort.Baud115200,
             readyRead=self.receive,
         )
+        self.enableButtons(False)
 
     def receive(self):
         while self.serial.bytesAvailable():
@@ -324,7 +347,7 @@ class MainWindow(QMainWindow):
                 self.updateText(text, False)
 
     def send(self):
-        text = self.message_le.text()
+        text = self.sendLE.text()
         if text == "":
             return
         if text[:2] == '0x':
@@ -333,15 +356,15 @@ class MainWindow(QMainWindow):
             int(text, 16)
         except ValueError:
             self.statusBar().showMessage("You must send a hexadecimal value", 1000)
-            self.message_le.clear()
+            self.sendLE.clear()
             return
         if len(text) %2 != 0:
             self.statusBar().showMessage("You must send a hexadecimal value", 1000)
-            self.message_le.clear()
+            self.sendLE.clear()
             return
         b = bytes.fromhex(text)
         self.serial.write(b)
-        self.message_le.clear()
+        self.sendLE.clear()
         self.updateText(text)
 
     def readModel(self):
@@ -380,6 +403,7 @@ class MainWindow(QMainWindow):
             )
             self.brightnessLE.clear()
             return
+        self.brightnessLabel.setText(f"Brightness ({val}): ")
         text = HM_TM5X.brightness(int(val), True)
         self.brightnessLE.clear()
         if text[:2] != -1:
@@ -396,6 +420,7 @@ class MainWindow(QMainWindow):
             )
             self.contrastLE.clear()
             return
+        self.contrastLabel.setText(f"Contrast ({val}): ")
         text = HM_TM5X.contrast(int(val), True)
         self.contrastLE.clear()
         if text[:2] != -1:
@@ -414,6 +439,28 @@ class MainWindow(QMainWindow):
             f"Writing mirror mode as {self.mirrorModes.itemText(val)}", 1000
         )
 
+    def writeASC(self):
+        val = self.asc.currentIndex()
+        self.lastFunctionSent = 8
+        text = HM_TM5X.autoShutterControl(val, True)
+        if text[:2] != -1:
+            self.serial.write(bytes.fromhex(text))
+        self.updateText(text)
+        self.statusBar().showMessage(
+            f"Writing Auto Shutter Control as {self.asc.itemText(val)}", 1000
+        )
+
+    def writeManualShutterCalibration(self):
+        val = self.asc.currentIndex()
+        self.lastFunctionSent = 5
+        text = HM_TM5X.manualShutterCalibration()
+        if text[:2] != -1:
+            self.serial.write(bytes.fromhex(text))
+        self.updateText(text)
+        self.statusBar().showMessage(
+            f"Writing Manual Shutter Calibration", 1000
+        )
+
     def saveSettings(self):
         self.lastFunctionSent = 3
         text = HM_TM5X.saveCurrentSettings()
@@ -426,12 +473,12 @@ class MainWindow(QMainWindow):
 
     @QtCore.pyqtSlot()
     def clearOutput(self):
-        self.output_te.clear()
+        self.outputTE.clear()
         self.statusBar().showMessage("Output cleared", 1000)
 
     @QtCore.pyqtSlot(bool)
     def on_toggled(self, checked):
-        self.connectPortButton.setText("Disconnect" if checked else "Connect")
+        self.connectPortButton.setText("Disconnect" if checked else "Connect to port")
         if checked:
             if not self.serial.isOpen():
                 self.serial.open(QtCore.QIODevice.ReadWrite)
@@ -441,15 +488,32 @@ class MainWindow(QMainWindow):
                     self.statusBar().showMessage(
                         f"Connected to {self.portFinder.port}", 1000
                     )
+                    self.enableButtons(True)
             else:
                 self.statusBar().showMessage("COM Port not selected or available", 1000)
                 self.connectPortButton.setChecked(False)
         else:
+            self.enableButtons(False)
             self.serial.close()
             self.statusBar().showMessage("Serial connection closed", 1000)
 
+    def enableButtons(self, val):
+        val = not val
+        self.brightnessButton.setDisabled(val)
+        self.brightnessLE.setDisabled(val)
+        self.contrastLE.setDisabled(val)
+        self.contrastButton.setDisabled(val)
+        self.writeASCButton.setDisabled(val)
+        self.factoryResetButton.setDisabled(val)
+        self.writeMirrorModeButton.setDisabled(val)
+        self.manualShutterCalibrationButton.setDisabled(val)
+        self.saveSettingsButton.setDisabled(val)
+        self.writePaletteButton.setDisabled(val)
+        self.sendButton.setDisabled(val)
+        self.sendLE.setDisabled(val)
+
     def showDialog(self):
-        dialog = LoginPopup(self)
+        dialog = ResetPopup(self)
         if dialog.exec_():
             self.lastFunctionSent = 4
             text = HM_TM5X.factoryReset()
@@ -486,19 +550,19 @@ class MainWindow(QMainWindow):
         if sending:
             if self.showTimestamp:
                 t = datetime.now()
-                self.output_te.append(
+                self.outputTE.append(
                     f"{t.hour}:{t.minute}:{t.second}.{round(t.microsecond / 1000)} ->>> {text}"
                 )
             else:
-                self.output_te.append(f">> {text}")
+                self.outputTE.append(f">> {text}")
         else:
             if self.showTimestamp:
                 t = datetime.now()
-                self.output_te.append(
+                self.outputTE.append(
                     f"{t.hour}:{t.minute}:{t.second}.{round(t.microsecond / 1000)} -> {text}"
                 )
             else:
-                self.output_te.append(f"{text}")
+                self.outputTE.append(f"{text}")
             self.statusBar().showMessage(f'"{text}" received', 1000)
 
 
