@@ -248,6 +248,10 @@ class MainWindow(QMainWindow):
             text="Set Mirror Mode", clicked=self.writeMirrorMode
         )
 
+        self.manualShutterCalibrationButton = QPushButton(
+            text="Manual Shutter Calibration", clicked=self.writeManualShutterCalibration
+        )
+
         self.asc = QComboBox()
         self.asc.addItems(["Auto Ctrl Off", "Auto Switching, Timing Ctrl",
                            "Auto Switching, Temp Diff Ctrl", "Full-auto Ctrl (Default)"])
@@ -256,12 +260,33 @@ class MainWindow(QMainWindow):
             text="Set Auto Shutter Ctrl", clicked=self.writeASC
         )
 
-        self.saveSettingsButton = QPushButton(
-            text="Save Current Device Settings to Device", clicked=self.saveSettings
+        self.writeVigButton = QPushButton(
+            text="Run Vignette Correction", clicked=self.writeVignette
         )
 
-        self.manualShutterCalibrationButton = QPushButton(
-            text="Manual Shutter Calibration", clicked=self.writeManualShutterCalibration
+        self.iddeLabel = QLabel("Image Detail Enhancement (50): ")
+        self.iddeLE = QLineEdit()
+        self.iddeButton = QPushButton(
+            text="Set Image Detail Enhancement (0-100)", clicked=self.writeIDDE
+        )
+        self.iddeLE.returnPressed.connect(self.iddeButton.click)
+
+        self.staticDenoisingLabel = QLabel("Static Denoising Level (50): ")
+        self.staticDenoisingLE = QLineEdit()
+        self.staticDenoisingButton = QPushButton(
+            text="Set Static Denoising Level (0-100)", clicked=self.writeStaticDenoising
+        )
+        self.staticDenoisingLE.returnPressed.connect(self.staticDenoisingButton.click)
+
+        self.dynamicDenoisingLabel = QLabel("Dynamic Denoising Level (50): ")
+        self.dynamicDenoisingLE = QLineEdit()
+        self.dynamicDenoisingButton = QPushButton(
+            text="Set Dynamic Denoising Level (0-100)", clicked=self.writeDynamicDenoising
+        )
+        self.dynamicDenoisingLE.returnPressed.connect(self.dynamicDenoisingButton.click)
+
+        self.saveSettingsButton = QPushButton(
+            text="Save Current Device Settings to Device", clicked=self.saveSettings
         )
 
         self.factoryResetButton = QPushButton(text="Factory Reset Device", clicked=self.showDialog)
@@ -310,6 +335,24 @@ class MainWindow(QMainWindow):
         hlay6.addWidget(self.writeASCButton)
         lay.addWidget(self.manualShutterCalibrationButton)
         lay.addLayout(hlay6)
+        lay.addWidget(QFrame(frameShape=QFrame.HLine))
+
+        lay.addWidget(self.writeVigButton)
+        hlay7 = QHBoxLayout()
+        hlay7.addWidget(self.iddeLabel)
+        hlay7.addWidget(self.iddeLE)
+        hlay7.addWidget(self.iddeButton)
+        lay.addLayout(hlay7)
+        hlay8 = QHBoxLayout()
+        hlay8.addWidget(self.staticDenoisingLabel)
+        hlay8.addWidget(self.staticDenoisingLE)
+        hlay8.addWidget(self.staticDenoisingButton)
+        lay.addLayout(hlay8)
+        hlay9 = QHBoxLayout()
+        hlay9.addWidget(self.dynamicDenoisingLabel)
+        hlay9.addWidget(self.dynamicDenoisingLE)
+        hlay9.addWidget(self.dynamicDenoisingButton)
+        lay.addLayout(hlay9)
         lay.addWidget(QFrame(frameShape=QFrame.HLine))
 
         lay.addWidget(self.saveSettingsButton)
@@ -451,7 +494,6 @@ class MainWindow(QMainWindow):
         )
 
     def writeManualShutterCalibration(self):
-        val = self.asc.currentIndex()
         self.lastFunctionSent = 5
         text = HM_TM5X.manualShutterCalibration()
         if text[:2] != -1:
@@ -460,6 +502,67 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(
             f"Writing Manual Shutter Calibration", 1000
         )
+
+    def writeVignette(self):
+        self.lastFunctionSent = 7
+        text = HM_TM5X.vignettingCorrection()
+        if text[:2] != -1:
+            self.serial.write(bytes.fromhex(text))
+        self.updateText(text)
+        self.statusBar().showMessage(
+            f"Performing Vignette Correction", 1000
+        )
+
+    def writeIDDE(self):
+        self.lastFunctionSent = 11
+        val = self.iddeLE.text()
+        if not val.isnumeric():
+            self.statusBar().showMessage(
+                "Image Detail Enhancement must by a number between 0 and 100", 1000
+            )
+            self.iddeLE.clear()
+            return
+        self.iddeLabel.setText(f"Image Detail Enhancement ({val}): ")
+        text = HM_TM5X.imageDetailDigitalEnhancement(int(val), True)
+        self.iddeLE.clear()
+        if text[:2] != -1:
+            self.serial.write(bytes.fromhex(text))
+        self.updateText(text)
+        self.statusBar().showMessage(f"Setting Image Detail Enhancement to {val}", 1000)
+
+    def writeStaticDenoising(self):
+        self.lastFunctionSent = 12
+        val = self.staticDenoisingLE.text()
+        if not val.isnumeric():
+            self.statusBar().showMessage(
+                "Static Denoising Level must by a number between 0 and 100", 1000
+            )
+            self.staticDenoisingLE.clear()
+            return
+        self.staticDenoisingLabel.setText(f"Static Denoising Level ({val}): ")
+        text = HM_TM5X.staticDenoisingLevel(int(val), True)
+        self.staticDenoisingLE.clear()
+        if text[:2] != -1:
+            self.serial.write(bytes.fromhex(text))
+        self.updateText(text)
+        self.statusBar().showMessage(f"Setting Static Denoising Level to {val}", 1000)
+
+    def writeDynamicDenoising(self):
+        self.lastFunctionSent = 13
+        val = self.dynamicDenoisingLE.text()
+        if not val.isnumeric():
+            self.statusBar().showMessage(
+                "Dynamic Denoising Level must by a number between 0 and 100", 1000
+            )
+            self.dynamicDenoisingLE.clear()
+            return
+        self.dynamicDenoisingLabel.setText(f"Dynamic Denoising Level ({val}): ")
+        text = HM_TM5X.dynamicDenoisingLevel(int(val), True)
+        self.dynamicDenoisingLE.clear()
+        if text[:2] != -1:
+            self.serial.write(bytes.fromhex(text))
+        self.updateText(text)
+        self.statusBar().showMessage(f"Setting Dynamic Denoising Level to {val}", 1000)
 
     def saveSettings(self):
         self.lastFunctionSent = 3

@@ -368,9 +368,9 @@ def parseBackgroundCorrection(feedback):
 # 2.2.12 Vignetting Correction (Write-Only)
 def vignettingCorrection():
     class_addr = 0x7C
-    subclass_addr = 0x02
+    subclass_addr = 0x0C
     rw_flag = WRITE_FLAG
-    data = 0x00
+    data = 0x02
     size = 0x05
     chk = (DEVICE_ADDR + class_addr + subclass_addr + rw_flag + data) & 0xFF
     return packetTemplate(class_addr, subclass_addr, rw_flag, data, size, chk)
