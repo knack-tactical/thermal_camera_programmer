@@ -614,6 +614,13 @@ class MainWindow(QMainWindow):
         self.writePaletteButton.setDisabled(val)
         self.sendButton.setDisabled(val)
         self.sendLE.setDisabled(val)
+        self.iddeButton.setDisabled(val)
+        self.iddeLE.setDisabled(val)
+        self.staticDenoisingButton.setDisabled(val)
+        self.staticDenoisingLE.setDisabled(val)
+        self.writeVigButton.setDisabled(val)
+        self.dynamicDenoisingButton.setDisabled(val)
+        self.dynamicDenoisingLE.setDisabled(val)
 
     def showDialog(self):
         dialog = ResetPopup(self)
