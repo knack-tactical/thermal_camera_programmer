@@ -261,7 +261,7 @@ class MainWindow(QMainWindow):
         )
 
         self.writeVigButton = QPushButton(
-            text="Run Vignette Correction", clicked=self.writeVignette
+            text="Run Vignette Correction (Aim camera at uniform surface)", clicked=self.writeVignette
         )
 
         self.iddeLabel = QLabel("Image Detail Enhancement (50): ")
